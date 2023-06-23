@@ -4,19 +4,32 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 
 	helpers "github.com/farhanswitch/kong-keyless/helpers/buffer-formatter"
 )
+
+type DataResponse struct{
+	StatusCode int32 `json:"statusCode"`
+	Details RefreshTokenResponse
+}
 type RefreshTokenResponse struct {
-	Access_Token string `json:"access_token"`
-	Expires_In int32 `json:"expires_in"`
-	Refresh_Token string `json:"refresh_token"`
-	Refresh_Expires_In int32 `json:"refresh_expires_in"`
-	Token_Type string 
-	Not_Before_Policy string `json:"not-before-policy"`
-	Session_State string
-	Scope string
+	
+	AccessToken string `json:"access_token"`
+	ExpiresIn int32 `json:"expires_in"`
+	RefreshToken string `json:"refresh_token"`
+	RefreshExpiresIn int32 `json:"refresh_expires_in"`
+	Message string `json:"message"`
+	
+}
+type ValidateAccessResponse struct{
+	StatusCode int32 `json:"statusCode"`
+	Details ValidateAccessDetails
+}
+type ValidateAccessDetails struct{
+	Success bool `json:"success"`
+	Message string `json:"message"`
 }
 type AuthProvider struct{
 	authURL string
@@ -24,47 +37,65 @@ type AuthProvider struct{
 }
 var provider *AuthProvider
 func (ap AuthProvider) AuthRequest(endpoint string, token string) error{
-	payloadBody := helpers.EncodeBuffer([]byte(fmt.Sprintf(`{"endpoint":"%s","token":"%s"}`,endpoint,token)))
-	fmt.Println(payloadBody)
+	payloadBody := helpers.EncodeBuffer([]byte(fmt.Sprintf(`{"path":"%s","token":"%s"}`,endpoint,token)))
 	req, err := http.NewRequest(http.MethodPost, ap.authURL,payloadBody)
 	if err != nil {
+		
+		log.Printf("Error: %v\n", err)
 		return err
 	}
 	req.Header.Add("Content-Type","application/json")
 	client := &http.Client{}
 	res, err := client.Do(req)
 	if err != nil {
+		
+		log.Printf("Error: %v\n", err)
 		return err
-	}
-	defer res.Body.Close()
-	if res.StatusCode != http.StatusOK{
-		return fmt.Errorf("%s","Access Forbidden")
-	}
-	return nil
-}
-func(ap AuthProvider) RefreshToken(token string) (RefreshTokenResponse, error){
-	payloadBody := helpers.EncodeBuffer([]byte(fmt.Sprintf(`{"token":"%s"}`,token)))
-	fmt.Println(payloadBody)
-	req, err := http.NewRequest(http.MethodPost,ap.refreshURL,payloadBody)
-	if err != nil {
-		return RefreshTokenResponse{}, err
-	}
-	req.Header.Add("Content-Type","application/json")
-	client := &http.Client{}
-	res, err := client.Do(req)
-	if err != nil {
-		return RefreshTokenResponse{},err
 	}
 	defer res.Body.Close()
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
-		return RefreshTokenResponse{},err
+		return err
 	}
-	var refResponse RefreshTokenResponse
-	fmt.Println(refResponse)
+	var accessResponse ValidateAccessResponse
+	err = json.Unmarshal(body, &accessResponse)
+	if err != nil {
+		return err
+	}
+	if accessResponse.StatusCode != http.StatusOK{
+		return fmt.Errorf("%s","Access Forbidden")
+	}
+	return nil
+}
+func(ap AuthProvider) RefreshToken(token string) (DataResponse, error){
+	payloadBody := helpers.EncodeBuffer([]byte(fmt.Sprintf(`{"token":"%s"}`,token)))
+	req, err := http.NewRequest(http.MethodPost,ap.refreshURL,payloadBody)
+	if err != nil {
+		log.Printf("Error: %v\n", err)
+		return DataResponse{}, err
+	}
+	req.Header.Add("Content-Type","application/json")
+	client := &http.Client{}
+	res, err := client.Do(req)
+	if err != nil {
+		log.Printf("Error: %v\n", err)
+		return DataResponse{},err
+	}
+	defer res.Body.Close()
+	
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		log.Printf("Error: %v\n", err)
+		return DataResponse{},err
+	}
+	var refResponse DataResponse
 	err = json.Unmarshal(body, &refResponse)
 	if err != nil {
-		return RefreshTokenResponse{},err
+		log.Printf("Error: %v\n", err)
+		return DataResponse{},err
+	}
+	if refResponse.StatusCode != http.StatusOK{
+		return DataResponse{}, fmt.Errorf("access forbidden. status code: %d", refResponse.StatusCode)
 	}
 	return refResponse, nil
 

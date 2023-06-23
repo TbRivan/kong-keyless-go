@@ -46,7 +46,9 @@ func (c Config) Access (kong *pdk.PDK){
 
 		}
 		res, err := authProvider.RefreshToken(XFRE)
+
 		if err != nil {
+			log.Printf("ERR REFRESH: %v\n", err)
 			kong.Response.Exit(http.StatusForbidden,`{"status":"Access Denied"}`, map[string][]string{
 				"Content-Type":{"application/json"},
 			})
@@ -55,19 +57,19 @@ func (c Config) Access (kong *pdk.PDK){
 		fmt.Println(res)
 		cookieXACS := http.Cookie{
 			Name: "XACS",
-			Value: res.Access_Token,
+			Value: res.Details.AccessToken,
 			Path: "/",
-			MaxAge: int(res.Expires_In) * 1000,
+			MaxAge: int(res.Details.ExpiresIn) * 1000,
 			Secure: true,
 		}
 		cookieXFRE := http.Cookie{
 			Name: "XFRE",
-			Value: res.Refresh_Token,
+			Value: res.Details.RefreshToken,
 			Path: "/",
 			MaxAge: 5 * 1000 * 3600,
 			Secure: true,
 		}
-		XACS = res.Access_Token
+		XACS = res.Details.AccessToken
 		kong.Response.SetHeader("Set-Cookie", cookieXACS.String())
 		kong.Response.SetHeader("Set-Cookie", cookieXFRE.String())
 
@@ -85,7 +87,7 @@ func (c Config) Access (kong *pdk.PDK){
 	 
 	 err = authProvider.AuthRequest(path, XACS)
 	 if err != nil {
-		log.Printf("Auth Provider Failed")
+		log.Printf("Auth Provider Failed\n")
 		kong.Response.Exit(http.StatusForbidden,`{"status":"Access Denied"}`, map[string][]string{
 			"Content-Type":{"application/json"},
 		})

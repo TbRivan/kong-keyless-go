@@ -5,12 +5,17 @@ import (
 )
 
 func ParsingCookie(strCookie string)map[string]string{
-	var mapCookie map[string]string = make(map[string]string)
-	for _, cookie := range strings.Split(strCookie,";"){
-		obj := strings.Split(cookie,"=")
-		var key string = obj[0]
-		var value string = obj[1]
-		mapCookie[key] = value
+	cookieMap := make(map[string]string)
+
+	pairs := strings.Split(strCookie, ";")
+	for _, pair := range pairs {
+		pair = strings.TrimSpace(pair)
+		cookie := strings.SplitN(pair, "=", 2)
+		if len(cookie) == 2 {
+			name := strings.TrimSpace(cookie[0])
+			value := strings.TrimSpace(cookie[1])
+			cookieMap[name] = value
+		}
 	}
-	return mapCookie
+	return cookieMap
 }
