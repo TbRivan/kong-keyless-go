@@ -1,5 +1,7 @@
 build-linux:
 	GOOS=linux GOARCH=amd64 go build  -o build/kong-keyless main.go
+build-win-linux:
+	SET GOOS=linux&& SET GOARCH=amd64&& go build  -o build/kong-keyless main.go
 build-win:
 	GOOS=windows GOARCH=amd64 go build -o build/kong-keyless.exe main.go
 build-mac:
