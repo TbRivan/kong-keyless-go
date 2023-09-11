@@ -1,0 +1,70 @@
+_format_version: "2.1"
+
+services:
+  - name: auth
+    url: http://192.168.1.214:7880
+    routes:
+      - paths:
+          - /auth/api
+  - name: merchants
+    url: http://192.168.1.214:9966
+    routes:
+      - paths:
+          - /merchant/api
+  - name: wallets
+    url: http://192.168.1.214:3333
+    routes:
+      - paths:
+          - /wallet/api
+  - name: transactions
+    url: http://192.168.1.214:7766
+    routes:
+      - paths:
+          - /transaction/api
+  - name: auth-merchant
+    url: http://192.168.1.214:7879
+    routes:
+      - paths:
+          - /auth-merchant/api
+
+routes:
+  - name: wallets
+    paths:
+      - /wallet/api/unique-wallets/create
+      - /unique-wallets/get-all
+      - /wallet/api/unique-wallets/get-all
+      - /wallet/api/unique-wallets/get-by-id/*
+    service: wallets
+    preserve_host: true
+    strip_path: false
+    plugins:
+      - name: kong-keyless
+        config:
+          authurl: http://192.168.1.214:8000/auth/api/auth/validate-access
+  - name: transactions
+    paths:
+      # disabled because auth merchant not provide a token
+      # - /transaction/api/transactions/init
+      - /transaction/api/transactions/get-all
+      - /transaction/api/transactions/get-by-id/*
+    service: transactions
+    preserve_host: true
+    strip_path: false
+    plugins:
+      - name: kong-keyless
+        config:
+          authurl: http://192.168.1.214:8000/auth/api/auth/validate-access
+  - name: merchants
+    paths:
+      - /merchant/api/merchants/get-list
+      - /merchant/api/merchants/get-item/*
+      - /merchant/api/merchants/add
+      - /merchant/api/merchants/edit
+      - /merchant/api/merchants/delete
+    service: merchants
+    preserve_host: true
+    strip_path: false
+    plugins:
+      - name: kong-keyless
+        config:
+          authurl: http://192.168.1.214:8000/auth/api/auth/validate-access
